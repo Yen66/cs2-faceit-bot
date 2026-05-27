@@ -82,29 +82,28 @@ def format_last_matches(nickname: str, matches_data: list, avg_kills: float | No
         except (ValueError, TypeError):
             return "—"
 
-    table = "<code>"
-    table += f"{'':8} {'Счёт':<6} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}\n"
-    table += "─" * 36 + "\n"
+    col_header = f"   <code>{'Карта':<6} {'Счёт':<5} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}</code>\n"
+    separator = f"   <code>{'─' * 33}</code>\n"
 
+    rows = ""
     for m in matches_data:
         icon = "🟢" if m.get("result") == "1" else "🔴"
         map_name = m.get("map", "?").replace("de_", "")[:6]
-        score = m.get("score", "?").replace(" ", "")
+        score = (m.get("score") or "?").replace(" ", "")
         k = str(m.get("kills", "—"))
         d = str(m.get("deaths", "—"))
         a = str(m.get("assists", "—"))
         adr = _round1(m.get("adr"))
         kd = _round1(m.get("kd"))
 
-        table += f"{icon}{map_name:<6} {score:<5} {k:>2} {d:>2} {a:>2} {adr:>5} {kd:>4}\n"
-
-    table += "</code>"
+        data = f"{map_name:<6} {score:<5} {k:>2} {d:>2} {a:>2} {adr:>5} {kd:>4}"
+        rows += f"{icon} <code>{data}</code>\n"
 
     footer = ""
     if avg_kills is not None:
         footer = f"\n💀 Avg kills за {len(matches_data)} матчей: <b>{avg_kills}</b>"
 
-    return header + table + footer
+    return header + col_header + separator + rows + footer
 
 
 def format_recent(nickname: str, matches: list, current_elo: int) -> str:
