@@ -68,30 +68,41 @@ def format_stats(player: dict, stats: dict, avg_kills: float | None = None) -> s
 
 
 def format_last_matches(nickname: str, matches_data: list, avg_kills: float | None = None) -> str:
-    """Format last N matches list."""
+    """Format last N matches as a monospace table."""
     if not matches_data:
         return f"😔 Нет матчей для <b>{nickname}</b>"
 
-    lines = [f"📋 <b>Последние матчи — {nickname}</b>\n"]
+    header = f"📋 <b>Последние матчи — {nickname}</b>\n\n"
+
+    table = "<code>"
+    table += f"{'Карта':<9} {'Счёт':<6} {'K':>3} {'D':>3} {'A':>3} {'ADR':>5} {'K/D':>5}  {'Дата'}\n"
+    table += "─" * 46 + "\n"
 
     for m in matches_data:
         result = m.get("result", "?")
         icon = "✅" if result == "1" else "❌"
-        map_name = m.get("map", "?").replace("de_", "")
+        map_name = m.get("map", "?").replace("de_", "")[:8]
         score = m.get("score", "?")
         kills = m.get("kills", "?")
         deaths = m.get("deaths", "?")
+        assists = m.get("assists", "—")
+        adr = m.get("adr", "—")
         kd = m.get("kd", "?")
-        adr = m.get("adr", "?")
         when = _format_date(m.get("started_at", 0))
-        lines.append(
-            f"{icon} <b>{map_name:<10}</b> | {score} | K: {kills}  D: {deaths} | K/D: {kd} | ADR: {adr} | {when}"
+
+        table += (
+            f"{icon}{map_name:<8} {score:<6} "
+            f"{str(kills):>3} {str(deaths):>3} {str(assists):>3} "
+            f"{str(adr):>5} {str(kd):>5}  {when}\n"
         )
 
-    if avg_kills is not None:
-        lines.append(f"\n💀 Avg kills за {len(matches_data)} матчей: <b>{avg_kills}</b>")
+    table += "</code>"
 
-    return "\n".join(lines)
+    footer = ""
+    if avg_kills is not None:
+        footer = f"\n💀 Avg kills за {len(matches_data)} матчей: <b>{avg_kills}</b>"
+
+    return header + table + footer
 
 
 def format_recent(nickname: str, matches: list, current_elo: int) -> str:

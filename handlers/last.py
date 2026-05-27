@@ -31,6 +31,10 @@ def _parse_match(player_id: str, match_stats: dict, started_at: int) -> dict | N
             kills_raw = stats_obj.get("Kills", "0")
             deaths_raw = stats_obj.get("Deaths", "1")
             try:
+                assists = int(stats_obj.get("Assists", 0))
+            except (ValueError, TypeError):
+                assists = "—"
+            try:
                 kills_i = int(kills_raw)
                 deaths_i = int(deaths_raw)
                 kd = round(kills_i / max(deaths_i, 1), 2)
@@ -48,6 +52,7 @@ def _parse_match(player_id: str, match_stats: dict, started_at: int) -> dict | N
                 "score": round_stats.get("Score", "?-?"),
                 "kills": kills_i,
                 "deaths": deaths_i,
+                "assists": assists,
                 "kd": kd,
                 "adr": adr,
                 "started_at": started_at,
