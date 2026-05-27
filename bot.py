@@ -19,17 +19,19 @@ import logging
 import os
 
 import aiohttp
-from aiogram import Bot, Dispatcher
+from aiogram import BaseMiddleware, Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import Message
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
 from config import BOT_TOKEN
 from faceit_client import faceit
-from handlers import stats, last, compare, recent
+from handlers import compare, last, menu, recent, stats
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,48 +44,42 @@ WEBHOOK_PATH = "/webhook"
 PORT = int(os.getenv("PORT", 8080))
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
+
+
+class ClearStateOnCommand(BaseMiddleware):
+    """Clears FSM state whenever a user sends a /command, so commands always
+    work cleanly regardless of any in-progress flow (e.g. waiting_compare_nick)."""
+
+    async def __call__(self, handler, event, data):
+        if isinstance(event, Message) and event.text and event.text.startswith("/"):
+            state: FSMContext | None = data.get("state")
+            if state is not None:
+                await state.clear()
+        return await handler(event, data)
+
+
+dp.message.outer_middleware(ClearStateOnCommand())
 
 dp.include_router(stats.router)
 dp.include_router(last.router)
 dp.include_router(recent.router)
 dp.include_router(compare.router)
-
-
-MAIN_KB = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="📋 Последние матчи")],
-        [KeyboardButton(text="📈 Форма (20 матчей)"), KeyboardButton(text="⚔️ Сравнить игроков")],
-    ],
-    resize_keyboard=True,
-    input_field_placeholder="Введи никнейм на Faceit...",
-)
-
-BUTTON_HINTS = {
-    "📊 Статистика": "Введи: <code>/stats &lt;никнейм&gt;</code>",
-    "📋 Последние матчи": "Введи: <code>/last &lt;никнейм&gt;</code>",
-    "📈 Форма (20 матчей)": "Введи: <code>/recent &lt;никнейм&gt;</code>",
-    "⚔️ Сравнить игроков": "Введи: <code>/compare &lt;никнейм1&gt; &lt;никнейм2&gt;</code>",
-}
+dp.include_router(menu.router)
 
 
 @dp.message(Command("start", "help"))
 async def cmd_start(message: Message):
     await message.answer(
         "👋 <b>CS2 Faceit Stats Bot</b>\n\n"
-        "📌 Команды:\n"
-        "• <code>/stats s1mple</code> — карточка игрока\n"
-        "• <code>/last s1mple</code> — последние 10 матчей\n"
-        "• <code>/recent s1mple</code> — форма за последние 20 матчей\n"
-        "• <code>/compare s1mple NiKo</code> — сравнение двух игроков\n\n"
-        "Используй никнейм с <b>Faceit</b>, не Steam.",
-        reply_markup=MAIN_KB,
+        "Просто пришли ник на <b>Faceit</b> — я покажу кнопки выбора действия.\n\n"
+        "Например: <code>s1mple</code>\n\n"
+        "Также работают команды:\n"
+        "• <code>/stats &lt;ник&gt;</code> — карточка игрока\n"
+        "• <code>/last &lt;ник&gt;</code> — последние 10 матчей\n"
+        "• <code>/recent &lt;ник&gt;</code> — форма за 20 матчей\n"
+        "• <code>/compare &lt;ник1&gt; &lt;ник2&gt;</code> — сравнение",
     )
-
-
-@dp.message(lambda m: m.text in BUTTON_HINTS)
-async def on_kb_button(message: Message):
-    await message.answer(BUTTON_HINTS[message.text], reply_markup=MAIN_KB)
 
 
 async def on_startup(app: web.Application):
