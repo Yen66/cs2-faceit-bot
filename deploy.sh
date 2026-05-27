@@ -1,5 +1,5 @@
 #!/bin/bash
-# Safe deploy: syntax check, push, then re-assert webhook after Render has spun up.
+# Safe deploy: syntax check, push, force Render deploy, then re-assert webhook.
 # Usage: ./deploy.sh "commit message"
 set -e
 
@@ -16,19 +16,30 @@ else
 fi
 git push
 
-echo "✅ Pushed. Render will auto-deploy."
-echo "⏳ Waiting 150s for Render rolling deploy to finish..."
-sleep 150
+# --- load secrets from .env ---
+BOT_TOKEN=$(grep '^BOT_TOKEN=' .env | cut -d= -f2- | tr -d '\r')
+RENDER_API_KEY=$(grep '^RENDER_API_KEY=' .env | cut -d= -f2- | tr -d '\r')
+RENDER_SERVICE_ID=$(grep '^RENDER_SERVICE_ID=' .env | cut -d= -f2- | tr -d '\r')
 
-BOT_TOKEN=$(grep '^BOT_TOKEN=' .env | cut -d= -f2-)
-if [ -z "$BOT_TOKEN" ]; then
-    echo "⚠️  BOT_TOKEN not found in .env — skipping webhook re-assert."
-    exit 0
+# --- explicitly trigger Render deploy (auto-deploy from GitHub is unreliable on this service) ---
+if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
+    echo "🚀 Triggering Render deploy..."
+    DEPLOY_ID=$(curl -s -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+        -H "Authorization: Bearer ${RENDER_API_KEY}" \
+        -H "Accept: application/json" | python -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+    echo "   deploy id: ${DEPLOY_ID}"
+else
+    echo "⚠️  RENDER_API_KEY / RENDER_SERVICE_ID missing in .env — relying on auto-deploy."
 fi
 
-echo "🔗 Re-asserting webhook (idempotent safety net)..."
-curl -s "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://cs2-faceit-bot.onrender.com/webhook"
-echo ""
-curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
-echo ""
+echo "⏳ Waiting 150s for rolling deploy to finish..."
+sleep 150
+
+if [ -n "$BOT_TOKEN" ]; then
+    echo "🔗 Re-asserting Telegram webhook (safety net)..."
+    curl -s "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=https://cs2-faceit-bot.onrender.com/webhook" > /dev/null
+    curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
+    echo ""
+fi
+
 echo "✅ Done."
