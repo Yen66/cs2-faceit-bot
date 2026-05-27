@@ -23,7 +23,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
@@ -50,6 +50,23 @@ dp.include_router(recent.router)
 dp.include_router(compare.router)
 
 
+MAIN_KB = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="📋 Последние матчи")],
+        [KeyboardButton(text="📈 Форма (20 матчей)"), KeyboardButton(text="⚔️ Сравнить игроков")],
+    ],
+    resize_keyboard=True,
+    input_field_placeholder="Введи никнейм на Faceit...",
+)
+
+BUTTON_HINTS = {
+    "📊 Статистика": "Введи: <code>/stats &lt;никнейм&gt;</code>",
+    "📋 Последние матчи": "Введи: <code>/last &lt;никнейм&gt;</code>",
+    "📈 Форма (20 матчей)": "Введи: <code>/recent &lt;никнейм&gt;</code>",
+    "⚔️ Сравнить игроков": "Введи: <code>/compare &lt;никнейм1&gt; &lt;никнейм2&gt;</code>",
+}
+
+
 @dp.message(Command("start", "help"))
 async def cmd_start(message: Message):
     await message.answer(
@@ -59,8 +76,14 @@ async def cmd_start(message: Message):
         "• <code>/last s1mple</code> — последние 10 матчей\n"
         "• <code>/recent s1mple</code> — форма за последние 20 матчей\n"
         "• <code>/compare s1mple NiKo</code> — сравнение двух игроков\n\n"
-        "Используй никнейм с <b>Faceit</b>, не Steam."
+        "Используй никнейм с <b>Faceit</b>, не Steam.",
+        reply_markup=MAIN_KB,
     )
+
+
+@dp.message(lambda m: m.text in BUTTON_HINTS)
+async def on_kb_button(message: Message):
+    await message.answer(BUTTON_HINTS[message.text], reply_markup=MAIN_KB)
 
 
 async def on_startup(app: web.Application):
