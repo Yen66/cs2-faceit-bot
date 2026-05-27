@@ -24,10 +24,15 @@ RENDER_SERVICE_ID=$(grep '^RENDER_SERVICE_ID=' .env | cut -d= -f2- | tr -d '\r')
 # --- explicitly trigger Render deploy (auto-deploy from GitHub is unreliable on this service) ---
 if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
     echo "🚀 Triggering Render deploy..."
-    DEPLOY_ID=$(curl -s -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+    RESP=$(curl -s --max-time 20 -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
         -H "Authorization: Bearer ${RENDER_API_KEY}" \
-        -H "Accept: application/json" | python -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
-    echo "   deploy id: ${DEPLOY_ID}"
+        -H "Accept: application/json" || true)
+    DEPLOY_ID=$(echo "$RESP" | python -c "import sys,json; d=sys.stdin.read(); print((json.loads(d) if d.strip().startswith(chr(123)) else {}).get('id',''))" 2>/dev/null || echo "")
+    if [ -n "$DEPLOY_ID" ]; then
+        echo "   deploy id: ${DEPLOY_ID}"
+    else
+        echo "   (could not parse deploy id, response: ${RESP:0:200}) — deploy may still have triggered"
+    fi
 else
     echo "⚠️  RENDER_API_KEY / RENDER_SERVICE_ID missing in .env — relying on auto-deploy."
 fi

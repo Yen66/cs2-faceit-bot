@@ -83,6 +83,10 @@ async def on_second_nick(message: Message, state: FSMContext):
 @router.message(F.text & ~F.text.startswith("/"))
 async def on_nick_input(message: Message, state: FSMContext):
     if message.text in IGNORE_TEXTS:
+        await message.answer(
+            "👆 Эти кнопки устарели — просто введи никнейм на Faceit и я покажу меню.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
         return
     nick = message.text.strip()
     if not nick:
