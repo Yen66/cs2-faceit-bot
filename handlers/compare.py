@@ -33,6 +33,7 @@ async def _aggregate_recent(player_id: str, limit: int = RECENT_LIMIT) -> dict:
     kds: list[float] = []
     hss: list[float] = []
     adrs: list[float] = []
+    kills_list: list[float] = []
 
     for match_stats in results:
         if not match_stats:
@@ -67,6 +68,10 @@ async def _aggregate_recent(player_id: str, limit: int = RECENT_LIMIT) -> dict:
                     adrs.append(float(ps.get("ADR", 0)))
                 except (ValueError, TypeError):
                     pass
+                try:
+                    kills_list.append(float(ps.get("Kills", 0)))
+                except (ValueError, TypeError):
+                    pass
                 break
             if found:
                 break
@@ -77,9 +82,10 @@ async def _aggregate_recent(player_id: str, limit: int = RECENT_LIMIT) -> dict:
         "wins": wins,
         "losses": losses,
         "win_rate": round(wins / n * 100, 1) if n else 0.0,
-        "avg_kd": round(sum(kds) / len(kds), 2) if kds else 0.0,
+        "avg_kd": round(sum(kds) / len(kds), 1) if kds else 0.0,
         "avg_hs": round(sum(hss) / len(hss), 1) if hss else 0.0,
         "avg_adr": round(sum(adrs) / len(adrs), 1) if adrs else 0.0,
+        "avg_kills": round(sum(kills_list) / len(kills_list), 1) if kills_list else 0.0,
     }
 
 

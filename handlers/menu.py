@@ -17,6 +17,7 @@ from formatters.messages import format_stats
 from handlers.compare import _do_compare
 from handlers.last import _fetch_and_show_last
 from handlers.recent import _build_and_send
+from handlers.stats import _load_card
 from keyboards.inline import stats_keyboard
 
 router = Router()
@@ -115,10 +116,9 @@ async def on_action(callback: CallbackQuery, state: FSMContext):
             f"⏳ Ищу <b>{nick}</b> на Faceit...", parse_mode="HTML"
         )
         try:
-            player = await faceit.get_player(nick)
-            stats = await faceit.get_stats(player["player_id"])
+            player, stats, avg_kills = await _load_card(nick)
             await wait_msg.edit_text(
-                format_stats(player, stats),
+                format_stats(player, stats, avg_kills=avg_kills),
                 parse_mode="HTML",
                 reply_markup=stats_keyboard(nick),
             )

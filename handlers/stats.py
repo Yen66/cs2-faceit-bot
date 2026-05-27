@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from aiogram import Router
@@ -6,10 +7,21 @@ from aiogram.types import Message, CallbackQuery
 
 from faceit_client import faceit, PlayerNotFoundError, FaceitError
 from formatters.messages import format_stats
+from handlers.compare import _aggregate_recent
 from keyboards.inline import stats_keyboard
 
 router = Router()
 log = logging.getLogger(__name__)
+
+
+async def _load_card(nickname: str):
+    """Fetch player + lifetime stats + last-20 aggregate in parallel."""
+    player = await faceit.get_player(nickname)
+    stats, agg = await asyncio.gather(
+        faceit.get_stats(player["player_id"]),
+        _aggregate_recent(player["player_id"]),
+    )
+    return player, stats, agg.get("avg_kills", 0.0)
 
 
 @router.message(Command("stats"))
@@ -28,9 +40,8 @@ async def cmd_stats(message: Message):
     wait_msg = await message.answer(f"⏳ Ищу <b>{nickname}</b> на Faceit...", parse_mode="HTML")
 
     try:
-        player = await faceit.get_player(nickname)
-        stats = await faceit.get_stats(player["player_id"])
-        text = format_stats(player, stats)
+        player, stats, avg_kills = await _load_card(nickname)
+        text = format_stats(player, stats, avg_kills=avg_kills)
         kb = stats_keyboard(nickname)
         await wait_msg.edit_text(text, parse_mode="HTML", reply_markup=kb)
 
@@ -50,9 +61,8 @@ async def cb_refresh_stats(callback: CallbackQuery):
     await callback.answer("🔄 Обновляю...")
 
     try:
-        player = await faceit.get_player(nickname)
-        stats = await faceit.get_stats(player["player_id"])
-        text = format_stats(player, stats)
+        player, stats, avg_kills = await _load_card(nickname)
+        text = format_stats(player, stats, avg_kills=avg_kills)
         kb = stats_keyboard(nickname)
         await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
     except (PlayerNotFoundError, FaceitError) as e:

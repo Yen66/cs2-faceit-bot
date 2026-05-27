@@ -85,7 +85,10 @@ async def _fetch_and_show_last(nickname: str, target_message: Message, edit: boo
         results = await asyncio.gather(*tasks)
         matches = [r for r in results if r is not None]
 
-        await _reply(format_last_matches(nickname, matches))
+        kills_vals = [m["kills"] for m in matches if isinstance(m.get("kills"), int)]
+        avg_kills = round(sum(kills_vals) / len(kills_vals), 1) if kills_vals else None
+
+        await _reply(format_last_matches(nickname, matches, avg_kills=avg_kills))
 
     except PlayerNotFoundError as e:
         await _reply(f"❌ {e}")
