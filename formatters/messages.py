@@ -82,7 +82,7 @@ def format_last_matches(nickname: str, matches_data: list, avg_kills: float | No
         except (ValueError, TypeError):
             return "—"
 
-    col_header = f"   <code>{'Карта':<6} {'Счёт':<5} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}</code>\n"
+    col_header = f"   <code>{'':6} {'Счёт':<5} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}</code>\n"
     separator = f"   <code>{'─' * 33}</code>\n"
 
     rows = ""
