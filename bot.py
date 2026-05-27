@@ -101,10 +101,13 @@ async def self_ping(app: web.Application):
 
 
 async def on_shutdown(app: web.Application):
-    await bot.delete_webhook()
+    # Intentionally NOT calling delete_webhook(): during Render rolling deploys
+    # the old container shuts down AFTER the new one has already set the webhook,
+    # so deleting it here leaves Telegram pointing at nothing. on_startup is
+    # idempotent and re-points the webhook on each container start.
     await faceit.close()
     await bot.session.close()
-    log.info("Webhook removed, shutdown complete")
+    log.info("Shutdown complete (webhook preserved)")
 
 
 def run_webhook():
