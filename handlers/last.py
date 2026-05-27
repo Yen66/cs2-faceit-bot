@@ -28,17 +28,28 @@ def _parse_match(player_id: str, match_stats: dict, started_at: int) -> dict | N
             # Found the player's team — read result strictly from here
             result = team.get("team_stats", {}).get("Team Win", team.get("team_stats", {}).get("Win", "0"))
             stats_obj = p.get("player_stats", {})
-            kills = stats_obj.get("Kills", "0")
-            deaths = stats_obj.get("Deaths", "1")
+            kills_raw = stats_obj.get("Kills", "0")
+            deaths_raw = stats_obj.get("Deaths", "1")
             try:
-                kd = round(int(kills) / max(int(deaths), 1), 2)
+                kills_i = int(kills_raw)
+                deaths_i = int(deaths_raw)
+                kd = round(kills_i / max(deaths_i, 1), 2)
             except (ValueError, TypeError):
+                kills_i = kills_raw
+                deaths_i = deaths_raw
                 kd = "?"
+            try:
+                adr = round(float(stats_obj.get("ADR", 0)), 1)
+            except (ValueError, TypeError):
+                adr = "?"
             return {
                 "result": str(result),
                 "map": round_stats.get("Map", "?"),
                 "score": round_stats.get("Score", "?-?"),
+                "kills": kills_i,
+                "deaths": deaths_i,
                 "kd": kd,
+                "adr": adr,
                 "started_at": started_at,
             }
     return None

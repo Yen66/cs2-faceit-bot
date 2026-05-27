@@ -24,11 +24,11 @@ def _flag(country_code: str) -> str:
 
 
 def _format_date(timestamp_s: int) -> str:
-    """Format Unix-seconds timestamp as DD.MM.YYYY (local time)."""
+    """Format Unix-seconds timestamp as DD.MM (local time)."""
     if not timestamp_s:
         return "?"
     dt = datetime.fromtimestamp(timestamp_s)
-    return dt.strftime("%d.%m.%Y")
+    return dt.strftime("%d.%m")
 
 
 def format_stats(player: dict, stats: dict) -> str:
@@ -46,16 +46,16 @@ def format_stats(player: dict, stats: dict) -> str:
     hs = lifetime.get("Average Headshots %", "—")
     win_rate = lifetime.get("Win Rate %", "—")
     matches = lifetime.get("Matches", "—")
-    avg_kills = lifetime.get("Average Kills", "—")
+    adr = lifetime.get("ADR", "—")
 
     return (
         f"👤 <b>{nickname}</b>  {flag}\n"
         f"━━━━━━━━━━━━━━━━\n"
         f"🏆 ELO: <b>{elo}</b>  |  Уровень: <b>{level}</b> {level_emoji}\n"
         f"⚔️ K/D: <b>{kd}</b>\n"
+        f"💥 ADR: <b>{adr}</b>\n"
         f"🎯 Хедшоты: <b>{hs}%</b>\n"
         f"🏅 Win Rate: <b>{win_rate}%</b>\n"
-        f"💀 Avg kills: <b>{avg_kills}</b>\n"
         f"📊 Матчей: <b>{matches}</b>\n"
     )
 
@@ -72,9 +72,14 @@ def format_last_matches(nickname: str, matches_data: list) -> str:
         icon = "✅" if result == "1" else "❌"
         map_name = m.get("map", "?").replace("de_", "")
         score = m.get("score", "?")
+        kills = m.get("kills", "?")
+        deaths = m.get("deaths", "?")
         kd = m.get("kd", "?")
+        adr = m.get("adr", "?")
         when = _format_date(m.get("started_at", 0))
-        lines.append(f"{icon} <b>{map_name:<10}</b> | {score} | K/D: {kd} | {when}")
+        lines.append(
+            f"{icon} <b>{map_name:<10}</b> | {score} | K: {kills}  D: {deaths} | K/D: {kd} | ADR: {adr} | {when}"
+        )
 
     return "\n".join(lines)
 
@@ -91,6 +96,9 @@ def format_recent(nickname: str, matches: list, current_elo: int) -> str:
 
     kds = [m.get("kd") for m in matches if isinstance(m.get("kd"), (int, float))]
     avg_kd = round(sum(kds) / len(kds), 2) if kds else "—"
+
+    adrs = [m.get("adr") for m in matches if isinstance(m.get("adr"), (int, float))]
+    avg_adr = round(sum(adrs) / len(adrs), 1) if adrs else "—"
 
     # Per-map breakdown
     map_stats: dict[str, list[int]] = {}
@@ -117,6 +125,7 @@ def format_recent(nickname: str, matches: list, current_elo: int) -> str:
         f"✅ Побед: <b>{wins}</b>  ❌ Поражений: <b>{losses}</b>\n"
         f"📈 Win Rate: <b>{win_rate}%</b>\n"
         f"⚔️ Средний K/D: <b>{avg_kd}</b>\n"
+        f"💥 Средний ADR: <b>{avg_adr}</b>\n"
         f"\n"
         f"🗺 По картам:\n" + "\n".join(map_lines)
     )
@@ -134,6 +143,7 @@ def format_compare_recent(p1: dict, a1: dict, p2: dict, a2: dict) -> str:
     kd1, kd2 = a1.get("avg_kd", 0.0), a2.get("avg_kd", 0.0)
     wr1, wr2 = a1.get("win_rate", 0.0), a2.get("win_rate", 0.0)
     hs1, hs2 = a1.get("avg_hs", 0.0), a2.get("avg_hs", 0.0)
+    adr1, adr2 = a1.get("avg_adr", 0.0), a2.get("avg_adr", 0.0)
     samples1 = a1.get("n", 0)
     samples2 = a2.get("n", 0)
 
@@ -148,14 +158,15 @@ def format_compare_recent(p1: dict, a1: dict, p2: dict, a2: dict) -> str:
     kd_c1, kd_c2 = cmp(kd1, kd2)
     wr_c1, wr_c2 = cmp(wr1, wr2)
     hs_c1, hs_c2 = cmp(hs1, hs2)
+    adr_c1, adr_c2 = cmp(adr1, adr2)
 
-    wins1 = sum([e1 > e2, kd1 > kd2, wr1 > wr2, hs1 > hs2])
-    wins2 = sum([e2 > e1, kd2 > kd1, wr2 > wr1, hs2 > hs1])
+    wins1 = sum([e1 > e2, kd1 > kd2, adr1 > adr2, wr1 > wr2, hs1 > hs2])
+    wins2 = sum([e2 > e1, kd2 > kd1, adr2 > adr1, wr2 > wr1, hs2 > hs1])
 
     verdict = (
-        f"🏆 <b>{n1}</b> лидирует {wins1}/4"
+        f"🏆 <b>{n1}</b> лидирует {wins1}/5"
         if wins1 > wins2 else
-        f"🏆 <b>{n2}</b> лидирует {wins2}/4"
+        f"🏆 <b>{n2}</b> лидирует {wins2}/5"
         if wins2 > wins1 else
         "🤝 Ничья!"
     )
@@ -167,6 +178,7 @@ def format_compare_recent(p1: dict, a1: dict, p2: dict, a2: dict) -> str:
         f"         {n1:<12} {n2}\n"
         f"ELO:  {e_c1} {e1:<8}  {e_c2} {e2}\n"
         f"K/D:  {kd_c1} {kd1:<8}  {kd_c2} {kd2}\n"
+        f"ADR:  {adr_c1} {adr1:<8}  {adr_c2} {adr2}\n"
         f"Win%: {wr_c1} {wr1:<8}  {wr_c2} {wr2}\n"
         f"HS%:  {hs_c1} {hs1:<8}  {hs_c2} {hs2}\n"
         f"Выборка: {samples1} / {samples2} матчей\n"
