@@ -122,6 +122,59 @@ def format_recent(nickname: str, matches: list, current_elo: int) -> str:
     )
 
 
+def format_compare_recent(p1: dict, a1: dict, p2: dict, a2: dict) -> str:
+    """Side-by-side comparison based on aggregated last-N matches."""
+    n1 = p1.get("nickname", "Player1")
+    n2 = p2.get("nickname", "Player2")
+
+    def elo(p):
+        return p.get("games", {}).get("cs2", {}).get("faceit_elo", 0)
+
+    e1, e2 = elo(p1), elo(p2)
+    kd1, kd2 = a1.get("avg_kd", 0.0), a2.get("avg_kd", 0.0)
+    wr1, wr2 = a1.get("win_rate", 0.0), a2.get("win_rate", 0.0)
+    hs1, hs2 = a1.get("avg_hs", 0.0), a2.get("avg_hs", 0.0)
+    samples1 = a1.get("n", 0)
+    samples2 = a2.get("n", 0)
+
+    def cmp(v1, v2):
+        if v1 > v2:
+            return "🟢", "⚪"
+        if v1 < v2:
+            return "⚪", "🟢"
+        return "🟡", "🟡"
+
+    e_c1, e_c2 = cmp(e1, e2)
+    kd_c1, kd_c2 = cmp(kd1, kd2)
+    wr_c1, wr_c2 = cmp(wr1, wr2)
+    hs_c1, hs_c2 = cmp(hs1, hs2)
+
+    wins1 = sum([e1 > e2, kd1 > kd2, wr1 > wr2, hs1 > hs2])
+    wins2 = sum([e2 > e1, kd2 > kd1, wr2 > wr1, hs2 > hs1])
+
+    verdict = (
+        f"🏆 <b>{n1}</b> лидирует {wins1}/4"
+        if wins1 > wins2 else
+        f"🏆 <b>{n2}</b> лидирует {wins2}/4"
+        if wins2 > wins1 else
+        "🤝 Ничья!"
+    )
+
+    return (
+        f"⚔️ <b>{n1}</b> vs <b>{n2}</b>\n"
+        f"<i>по последним 20 матчам</i>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"         {n1:<12} {n2}\n"
+        f"ELO:  {e_c1} {e1:<8}  {e_c2} {e2}\n"
+        f"K/D:  {kd_c1} {kd1:<8}  {kd_c2} {kd2}\n"
+        f"Win%: {wr_c1} {wr1:<8}  {wr_c2} {wr2}\n"
+        f"HS%:  {hs_c1} {hs1:<8}  {hs_c2} {hs2}\n"
+        f"Выборка: {samples1} / {samples2} матчей\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"{verdict}"
+    )
+
+
 def format_compare(p1: dict, s1: dict, p2: dict, s2: dict) -> str:
     """Format side-by-side comparison of two players."""
     n1 = p1.get("nickname", "Player1")
