@@ -18,6 +18,7 @@ import asyncio
 import logging
 import os
 
+import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -67,6 +68,19 @@ async def on_startup(app: web.Application):
     log.info("Webhook set: %s%s", WEBHOOK_URL, WEBHOOK_PATH)
 
 
+async def self_ping(app: web.Application):
+    async def _ping():
+        await asyncio.sleep(10)
+        while True:
+            try:
+                async with aiohttp.ClientSession() as s:
+                    await s.get(f"http://0.0.0.0:{PORT}/health")
+            except Exception:
+                pass
+            await asyncio.sleep(240)
+    asyncio.create_task(_ping())
+
+
 async def on_shutdown(app: web.Application):
     await bot.delete_webhook()
     await faceit.close()
@@ -88,6 +102,7 @@ def run_webhook():
     setup_application(app, dp, bot=bot)
 
     app.on_startup.append(on_startup)
+    app.on_startup.append(self_ping)
     app.on_shutdown.append(on_shutdown)
 
     log.info("Starting webhook server on port %d", PORT)
