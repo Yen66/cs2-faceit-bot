@@ -83,8 +83,8 @@ def format_last_matches(nickname: str, matches_data: list, avg_kills: float | No
             return "—"
 
     table = "<code>"
-    table += f"  {'Счёт':<7} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}\n"
-    table += "─" * 34 + "\n"
+    table += f"{'':8} {'Счёт':<6} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}\n"
+    table += "─" * 36 + "\n"
 
     for m in matches_data:
         icon = "🟢" if m.get("result") == "1" else "🔴"
