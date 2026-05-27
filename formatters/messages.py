@@ -74,27 +74,29 @@ def format_last_matches(nickname: str, matches_data: list, avg_kills: float | No
 
     header = f"📋 <b>Последние матчи — {nickname}</b>\n\n"
 
+    def _round1(v):
+        if v in (None, "—", "?"):
+            return "—"
+        try:
+            return str(round(float(v), 1))
+        except (ValueError, TypeError):
+            return "—"
+
     table = "<code>"
-    table += f"        {'Счёт':<6} {'K':>3} {'D':>3} {'ADR':>5} {'K/D':>5}\n"
-    table += "─" * 28 + "\n"
+    table += f"       {'Счёт':<7} {'K':>2} {'D':>2} {'A':>2} {'ADR':>5} {'K/D':>4}\n"
+    table += "─" * 30 + "\n"
 
     for m in matches_data:
         icon = "🟢" if m.get("result") == "1" else "🔴"
-        map_name = m.get("map", "?").replace("de_", "")[:7]
-        score = m.get("score", "?")
+        map_name = m.get("map", "?").replace("de_", "")[:6]
+        score = m.get("score", "?").replace(" ", "")
         k = str(m.get("kills", "—"))
         d = str(m.get("deaths", "—"))
-        raw_adr = m.get("adr")
-        if raw_adr in (None, "—", "?"):
-            adr = "—"
-        else:
-            try:
-                adr = str(round(float(raw_adr)))
-            except (ValueError, TypeError):
-                adr = "—"
-        kd = str(m.get("kd", "—"))
+        a = str(m.get("assists", "—"))
+        adr = _round1(m.get("adr"))
+        kd = _round1(m.get("kd"))
 
-        table += f"{icon}{map_name:<7} {score:<6} {k:>3} {d:>3} {adr:>5} {kd:>5}\n"
+        table += f"{icon}{map_name:<6} {score:<5} {k:>2} {d:>2} {a:>2} {adr:>5} {kd:>4}\n"
 
     table += "</code>"
 
