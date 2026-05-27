@@ -9,6 +9,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
+    ReplyKeyboardRemove,
 )
 
 from faceit_client import FaceitError, PlayerNotFoundError, faceit
@@ -25,6 +26,19 @@ log = logging.getLogger(__name__)
 class Form(StatesGroup):
     waiting_nick = State()
     waiting_compare_nick = State()
+
+
+# Legacy reply-keyboard button labels — silently ignore them so they aren't
+# treated as nicknames. Old clients may still see this keyboard until /start
+# sends ReplyKeyboardRemove.
+IGNORE_TEXTS = {
+    "📊 Статистика",
+    "📋 Последние матчи",
+    "📈 Форма (20 матчей)",
+    "⚔️ Сравнить игроков",
+}
+
+MAX_NICK_LEN = 64
 
 
 def menu_kb(nick: str) -> InlineKeyboardMarkup:
@@ -44,9 +58,17 @@ def menu_kb(nick: str) -> InlineKeyboardMarkup:
 
 @router.message(StateFilter(Form.waiting_compare_nick), F.text & ~F.text.startswith("/"))
 async def on_second_nick(message: Message, state: FSMContext):
+    if message.text in IGNORE_TEXTS:
+        return
     data = await state.get_data()
     nick1 = (data.get("compare_nick1") or "").strip()
     nick2 = message.text.strip()
+    if not nick2:
+        await message.answer("❓ Введи никнейм второго игрока.")
+        return
+    if len(nick2) > MAX_NICK_LEN:
+        await message.answer("❓ Слишком длинный ник.")
+        return
     await state.clear()
     if not nick1:
         await message.answer("⚠️ Контекст сравнения утерян. Введи ник заново.")
@@ -59,8 +81,17 @@ async def on_second_nick(message: Message, state: FSMContext):
 
 @router.message(F.text & ~F.text.startswith("/"))
 async def on_nick_input(message: Message, state: FSMContext):
+    if message.text in IGNORE_TEXTS:
+        return
     nick = message.text.strip()
-    if not nick or len(nick) > 64:
+    if not nick:
+        await message.answer(
+            "❓ Введи никнейм на Faceit.",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+    if len(nick) > MAX_NICK_LEN:
+        await message.answer("❓ Слишком длинный ник — не больше 64 символов.")
         return
     await state.update_data(last_nick=nick)
     await message.answer(

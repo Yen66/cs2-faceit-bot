@@ -25,7 +25,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 
@@ -79,6 +79,7 @@ async def cmd_start(message: Message):
         "• <code>/last &lt;ник&gt;</code> — последние 10 матчей\n"
         "• <code>/recent &lt;ник&gt;</code> — форма за 20 матчей\n"
         "• <code>/compare &lt;ник1&gt; &lt;ник2&gt;</code> — сравнение",
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 
